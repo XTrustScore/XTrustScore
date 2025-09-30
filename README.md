@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# XTrustScore 🔐
 
-## Getting Started
+**XTrustScore** is a free, open-source tool to **scan XRP tokens, wallets, and projects** for risk.  
+It gives a simple **Trust Score (Green / Orange / Red)** with transparent evidence — helping the XRP community avoid scams, rug pulls, and risky issuers.
 
-First, run the development server:
+🌐 Live: [xtrustscore.vercel.app](https://xtrustscore.vercel.app)
 
-```bash
+---
+
+## ✨ Features
+
+- **Trust Score** (0–100%) with color levels 🟢🟠🔴
+- **Signals (evidence)**  
+  - Domain & xrp-ledger.toml presence  
+  - Master key disabled check  
+  - Global Freeze / No Freeze flags  
+  - Transfer rate (hidden tax) detection  
+  - Trustlines count (basic adoption measure)  
+- **Alerts** for high-risk findings (freeze, tax, low adoption)  
+- **Dark mode toggle** 🌙  
+- Modern, mobile-friendly UI built with TailwindCSS & Next.js  
+- Free hosting on Vercel 🚀
+
+---
+
+## 🛠️ Tech Stack
+
+- [Next.js 15 (App Router)](https://nextjs.org/)  
+- [TypeScript](https://www.typescriptlang.org/)  
+- [Tailwind CSS v4](https://tailwindcss.com/)  
+- [XRPL.js](https://github.com/XRPLF/xrpl.js)  
+- Hosted on [Vercel](https://vercel.com)  
+
+---
+
+## ⚡ Getting Started (local dev)
+
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/XTrustScore/xtrustscore.git
+   cd xtrustscore
+
+2. Install dependencies:
+
+npm install
+
+3. Create a .env.local file:
+
+ini
+XRPL_WSS=wss://xrplcluster.com
+
+4. Run the dev server:
+
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Open http://localhost:3000.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+🚀 Deployment
+Deployed on Vercel: every push to main auto-builds.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+To deploy manually:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+vercel --prod
 
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+⚠️ Disclaimer
+XTrustScore provides heuristic indicators only.
+It is not financial advice, and cannot guarantee safety.
+Always do your own research.
+Not affiliated with Ripple or the XRPL Foundation.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+📬 Contributing
+Pull requests welcome!
+Ideas for new signals:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Holder concentration % (top 10 wallets)
 
-## Deploy on Vercel
+Freeze/clawback detection per token
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+GitHub repo activity
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Scam token blacklist integration
