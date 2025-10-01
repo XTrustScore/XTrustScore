@@ -1,3 +1,8 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-html { color-scheme: light dark; }
+/* Eventueel: laat browser weten dat er dark/light schema is */
+html {
+  color-scheme: light dark;
+}
