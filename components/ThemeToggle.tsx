@@ -5,11 +5,10 @@ import { useTheme } from "next-themes";
 export default function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-
   useEffect(() => setMounted(true), []);
-  if (!mounted) return null; // voorkomt SSR/CSR mismatch
+  if (!mounted) return null;
 
-  const active = theme ?? resolvedTheme;      // 'light' | 'dark'
+  const active = theme ?? resolvedTheme;
   const next = active === "dark" ? "light" : "dark";
 
   return (
