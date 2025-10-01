@@ -29,3 +29,11 @@
     "typescript": "^5"
   }
 }
+
+{
+  "dependencies": {
+    "next-themes": "^0.3.0",
+    "xrpl": "^3.0.0",
+    "undici": "^6.19.8"
+  }
+}
