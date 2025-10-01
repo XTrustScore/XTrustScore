@@ -1,8 +1,3 @@
-# back-up voor de zekerheid
-cp package.json package.bad.json
-
-# Overschrijf met een schone, geldige package.json
-cat > package.json <<'JSON'
 {
   "name": "xtrustscore",
   "version": "0.1.0",
@@ -30,4 +25,3 @@ cat > package.json <<'JSON'
     "typescript": "^5.6.3"
   }
 }
-JSON
