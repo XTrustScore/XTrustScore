@@ -14,6 +14,7 @@ export default function DebugTheme() {
   });
 
   if (!mounted) return null;
+
   return (
     <div className="ml-2 rounded bg-neutral-200 px-2 py-1 text-xs text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
       theme:{theme ?? "∅"} | resolved:{resolvedTheme ?? "∅"} | html:{htmlClasses || "∅"}
