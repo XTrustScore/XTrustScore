@@ -2,7 +2,6 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { Client } from "xrpl";
 
 type Verdict = "green" | "orange" | "red";
 
@@ -23,9 +22,12 @@ export async function GET(req: Request) {
     );
   }
 
-  let client: Client | null = null;
+  let client: any = null;
 
   try {
+    // ✅ dynamic import here
+    const { Client } = await import("xrpl");
+
     client = new Client(process.env.XRPL_NODE ?? "wss://xrplcluster.com");
     await client.connect();
 
@@ -109,7 +111,7 @@ export async function GET(req: Request) {
         flags,
         ownerCount,
       },
-      note: "This score is only indicative. XRPulse cannot guarantee 100% safety.",
+      note: "This score is indicative only. XRPulse cannot guarantee 100% safety.",
     });
   } catch (e: any) {
     return NextResponse.json(
