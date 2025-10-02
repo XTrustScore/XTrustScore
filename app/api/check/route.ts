@@ -1,11 +1,11 @@
 // app/api/check/route.ts
-export const runtime = "nodejs"; // force Node.js runtime
+export const runtime = "nodejs"; // ensure Node runtime
 
 import { NextResponse } from "next/server";
 
 type Verdict = "green" | "orange" | "red";
 
-function colorVerdict(points: number): Verdict {
+function verdictFrom(points: number): Verdict {
   if (points <= 1) return "green";
   if (points <= 3) return "orange";
   return "red";
@@ -22,33 +22,29 @@ export async function GET(req: Request) {
     );
   }
 
-  let client: any = null;
+  const RPC = process.env.XRPL_RPC ?? "https://xrplcluster.com/"; // HTTPS JSON-RPC
 
   try {
-    // ✅ require here instead of import at the top
-    const xrpl = require("xrpl");
-    const { Client } = xrpl;
+    // 1) account_info via JSON-RPC (HTTPS, no websockets)
+    const rpcBody = {
+      method: "account_info",
+      params: [{ account: address, ledger_index: "validated" }],
+    };
 
-    client = new Client(process.env.XRPL_NODE ?? "wss://xrplcluster.com");
-    await client.connect();
+    const res = await fetch(RPC, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(rpcBody),
+    });
 
-    const infoResp = await client
-      .request({
-        command: "account_info",
-        account: address,
-        ledger_index: "validated",
-      })
-      .catch((e: any) => {
-        if (
-          e?.data?.error === "actNotFound" ||
-          e?.data?.error === "act_not_found"
-        ) {
-          return null;
-        }
-        throw e;
-      });
+    if (!res.ok) {
+      throw new Error(`RPC HTTP ${res.status}`);
+    }
 
-    if (!infoResp) {
+    const json = await res.json();
+
+    // XRPL error when account is missing
+    if (json?.result?.error === "actNotFound" || json?.result?.error === "act_not_found") {
       return NextResponse.json({
         status: "red",
         message: "Address not found on XRPL ❌",
@@ -56,29 +52,34 @@ export async function GET(req: Request) {
       });
     }
 
-    const acc = (infoResp.result as any).account_data;
-    const flags: number = acc.Flags ?? 0;
+    const acc = json?.result?.account_data;
+    if (!acc) {
+      throw new Error("Malformed RPC response");
+    }
 
+    // 2) Simple scoring heuristics (same logic as before)
     let points = 0;
     const reasons: string[] = [];
+    const flags: number = acc.Flags ?? 0;
 
+    // Known Ripple donation address => green
     if (address === "rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh") {
       return NextResponse.json({
         status: "green",
         message: "Trusted Ripple donation wallet ✅",
-        details: {
-          account: acc,
-          reasons: ["Known Ripple donation wallet"],
-        },
+        details: { account: acc, reasons: ["Known Ripple donation wallet"] },
+        note: "This score is indicative only. XRPulse cannot guarantee 100% safety.",
       });
     }
 
+    // Master key not disabled? (lsfDisableMaster = 0x00100000)
     const lsfDisableMaster = (flags & 0x00100000) !== 0;
     if (!lsfDisableMaster) {
       points += 1;
       reasons.push("Master key is not disabled");
     }
 
+    // Domain (hex) present?
     let decodedDomain: string | null = null;
     if (acc.Domain) {
       try {
@@ -89,44 +90,30 @@ export async function GET(req: Request) {
       }
     }
 
+    // OwnerCount heuristic
     const ownerCount = acc.OwnerCount ?? 0;
     if (ownerCount > 10) {
       points += 1;
       reasons.push(`High owner count: ${ownerCount}`);
     }
 
-    const verdict = colorVerdict(points);
+    const status = verdictFrom(points);
 
     return NextResponse.json({
-      status: verdict,
+      status,
       message:
-        verdict === "green"
+        status === "green"
           ? "Likely safe wallet ✅"
-          : verdict === "orange"
+          : status === "orange"
           ? "Be cautious ⚠️"
           : "Suspicious wallet ❌",
-      details: {
-        account: acc,
-        reasons,
-        decodedDomain,
-        flags,
-        ownerCount,
-      },
-      note: "This score is indicative only. XRPulse cannot guarantee 100% safety.",
+      details: { account: acc, reasons, decodedDomain, flags, ownerCount },
+      note: "Results are indicative only. XRPulse cannot guarantee 100% safety.",
     });
   } catch (e: any) {
     return NextResponse.json(
-      {
-        status: "error",
-        message: "Ledger lookup failed: " + (e?.message ?? String(e)),
-      },
+      { status: "error", message: "Ledger lookup failed: " + (e?.message ?? String(e)) },
       { status: 500 }
     );
-  } finally {
-    if (client && client.isConnected()) {
-      try {
-        await client.disconnect();
-      } catch {}
-    }
   }
 }
