@@ -1,5 +1,5 @@
 // app/api/check/route.ts
-export const runtime = "nodejs"; // important: force Node.js runtime
+export const runtime = "nodejs"; // force Node.js runtime
 
 import { NextResponse } from "next/server";
 
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   let client: any = null;
 
   try {
-    // ✅ require here avoids Webpack issues
+    // ✅ require here instead of import at the top
     const xrpl = require("xrpl");
     const { Client } = xrpl;
 
