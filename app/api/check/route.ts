@@ -1,5 +1,5 @@
 // app/api/check/route.ts
-export const runtime = "nodejs";
+export const runtime = "nodejs"; // important: force Node.js runtime
 
 import { NextResponse } from "next/server";
 
@@ -25,8 +25,9 @@ export async function GET(req: Request) {
   let client: any = null;
 
   try {
-    // ✅ dynamic import here
-    const { Client } = await import("xrpl");
+    // ✅ require here avoids Webpack issues
+    const xrpl = require("xrpl");
+    const { Client } = xrpl;
 
     client = new Client(process.env.XRPL_NODE ?? "wss://xrplcluster.com");
     await client.connect();
