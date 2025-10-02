@@ -1,8 +1,16 @@
-// Forceer Node.js runtime (WS werkt niet op Edge)
+// app/api/check/route.ts
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { Client } from "xrpl";
+
+type Verdict = "green" | "orange" | "red";
+
+function colorVerdict(points: number): Verdict {
+  if (points <= 1) return "green";
+  if (points <= 3) return "orange";
+  return "red";
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -18,69 +26,104 @@ export async function GET(req: Request) {
   let client: Client | null = null;
 
   try {
-    // 1) Verbinden met XRPL mainnet
     client = new Client(process.env.XRPL_NODE ?? "wss://xrplcluster.com");
     await client.connect();
 
-    // 2) account_info ophalen
-    const infoResp = await client.request({
-      command: "account_info",
-      account: address,
-      ledger_index: "validated",
-    }).catch((e: any) => {
-      // XRPL error als account niet bestaat
-      if (e?.data?.error === "actNotFound" || e?.data?.error === "act_not_found") {
-        return null;
-      }
-      throw e;
-    });
+    const infoResp = await client
+      .request({
+        command: "account_info",
+        account: address,
+        ledger_index: "validated",
+      })
+      .catch((e: any) => {
+        if (
+          e?.data?.error === "actNotFound" ||
+          e?.data?.error === "act_not_found"
+        ) {
+          return null;
+        }
+        throw e;
+      });
 
     if (!infoResp) {
       return NextResponse.json({
         status: "red",
         message: "Address not found on XRPL ❌",
-        raw: null,
+        details: null,
       });
     }
 
     const acc = (infoResp.result as any).account_data;
     const flags: number = acc.Flags ?? 0;
 
-    // 3) Simpele heuristiek
-    let status: "green" | "orange" | "red" = "orange";
-    let message = "Unknown wallet ⚠️";
+    let points = 0;
+    const reasons: string[] = [];
 
-    // Bekend Ripple donation adres → green
     if (address === "rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh") {
-      status = "green";
-      message = "Trusted Ripple donation wallet ✅";
-    } else if ((flags === 0 || flags === undefined) && (acc.OwnerCount ?? 0) === 0) {
-      status = "green";
-      message = "Likely safe wallet (no suspicious flags) ✅";
-    } else if (acc.Domain) {
-      // Domain is in hex, decode
-      try {
-        const decoded = Buffer.from(acc.Domain, "hex").toString("utf8");
-        message = `Wallet has domain: ${decoded}`;
-        status = "orange";
-      } catch {
-        message = "Wallet has domain (could not decode) ⚠️";
-        status = "orange";
-      }
-    } else {
-      status = "red";
-      message = "Suspicious wallet ❌";
+      return NextResponse.json({
+        status: "green",
+        message: "Trusted Ripple donation wallet ✅",
+        details: {
+          account: acc,
+          reasons: ["Known Ripple donation wallet"],
+        },
+      });
     }
 
-    return NextResponse.json({ status, message, raw: acc });
-  } catch (e: any) {
+    const lsfDisableMaster = (flags & 0x00100000) !== 0;
+    if (!lsfDisableMaster) {
+      points += 1;
+      reasons.push("Master key is not disabled");
+    }
+
+    let decodedDomain: string | null = null;
+    if (acc.Domain) {
+      try {
+        decodedDomain = Buffer.from(acc.Domain, "hex").toString("utf8");
+        reasons.push(`Has domain: ${decodedDomain}`);
+      } catch {
+        reasons.push("Has domain (could not decode)");
+      }
+    }
+
+    const ownerCount = acc.OwnerCount ?? 0;
+    if (ownerCount > 10) {
+      points += 1;
+      reasons.push(`High owner count: ${ownerCount}`);
+    }
+
+    const verdict = colorVerdict(points);
+
     return NextResponse.json({
-      status: "error",
-      message: "Ledger lookup failed: " + (e?.message ?? String(e)),
-    }, { status: 500 });
+      status: verdict,
+      message:
+        verdict === "green"
+          ? "Likely safe wallet ✅"
+          : verdict === "orange"
+          ? "Be cautious ⚠️"
+          : "Suspicious wallet ❌",
+      details: {
+        account: acc,
+        reasons,
+        decodedDomain,
+        flags,
+        ownerCount,
+      },
+      note: "This score is only indicative. XRPulse cannot guarantee 100% safety.",
+    });
+  } catch (e: any) {
+    return NextResponse.json(
+      {
+        status: "error",
+        message: "Ledger lookup failed: " + (e?.message ?? String(e)),
+      },
+      { status: 500 }
+    );
   } finally {
     if (client && client.isConnected()) {
-      try { await client.disconnect(); } catch {}
+      try {
+        await client.disconnect();
+      } catch {}
     }
   }
 }

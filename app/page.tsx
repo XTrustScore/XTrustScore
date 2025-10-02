@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 
+type ApiResult =
+  | { status: "green" | "orange" | "red"; message: string; details?: any; note?: string }
+  | { status: "error"; message: string };
+
 export default function Home() {
   const [address, setAddress] = useState("");
-  const [result, setResult] = useState<null | { status: string; message: string }>(null);
+  const [result, setResult] = useState<ApiResult | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleScan() {
@@ -14,10 +18,10 @@ export default function Home() {
 
     try {
       const res = await fetch("/api/check?address=" + encodeURIComponent(address));
-      const data = await res.json();
+      const data = (await res.json()) as ApiResult;
       setResult(data);
-    } catch (err) {
-      setResult({ status: "error", message: "Failed to fetch API" });
+    } catch {
+      setResult({ status: "error", message: "Failed to reach API" });
     } finally {
       setLoading(false);
     }
@@ -27,14 +31,8 @@ export default function Home() {
     <section className="w-full rounded-2xl bg-neutral-100 px-6 py-16 shadow-md dark:bg-neutral-900 dark:text-neutral-100">
       <div className="mx-auto max-w-3xl text-center space-y-6">
         <h1 className="text-4xl font-bold leading-tight">
-          Scan XRP tokens, wallets & projects <br />
-          for <span className="text-[#008cff]">risk</span> — instantly.
+          XRPulse — <span className="text-[#008cff]">scan XRP wallets instantly</span>
         </h1>
-
-        <p className="text-lg text-neutral-600 dark:text-neutral-300">
-          Get a clear Trust Score (Blue / Orange / Red) with transparent evidence:  
-          domain + TOML, issuer flags, age, and more.
-        </p>
 
         <div className="flex justify-center gap-3">
           <input
@@ -49,13 +47,13 @@ export default function Home() {
             disabled={loading}
             className="rounded-lg bg-[#008cff] px-6 py-3 text-white shadow hover:bg-[#0072cc] disabled:opacity-50"
           >
-            {loading ? "Scanning..." : "Start scanning"}
+            {loading ? "Scanning..." : "Start Scan"}
           </button>
         </div>
 
         {result && (
           <div
-            className={`mt-6 rounded-lg p-4 font-semibold ${
+            className={`mx-auto mt-6 w-full max-w-2xl rounded-lg p-4 text-left ${
               result.status === "green"
                 ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                 : result.status === "orange"
@@ -65,7 +63,17 @@ export default function Home() {
                 : "bg-gray-200 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
             }`}
           >
-            {result.message}
+            <div className="font-semibold">{result.message}</div>
+            {"details" in result && result.details?.reasons?.length > 0 && (
+              <ul className="mt-2 list-disc pl-5 text-sm opacity-90">
+                {result.details.reasons.map((r: string, i: number) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-xs opacity-70">
+              ⚠️ Results are indicative only. XRPulse cannot guarantee 100% safety.
+            </p>
           </div>
         )}
       </div>
